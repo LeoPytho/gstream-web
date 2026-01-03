@@ -277,6 +277,14 @@ function Verify() {
     const data = await response.json();
 
     if (response.ok && data.success) {
+      // Check if data is actually not found (verified: false in response)
+      if (data.data.verified === false) {
+        showToast(data.data.message || data.message || "Data tidak ditemukan", "error");
+        setVerificationResult(null);
+        setLoading(false);
+        return;
+      }
+
       const isTrueValue = (value) => {
         if (typeof value === "boolean") return value;
         if (typeof value === "string") {
@@ -1660,3 +1668,4 @@ function Verify() {
 }
 
 export default Verify;
+
