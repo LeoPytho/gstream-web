@@ -57,7 +57,6 @@ function Replay() {
 
       const type = (membershipType || "monthly").toLowerCase();
       let expiryDate = new Date(regDate);
-
       if (type === "weekly" || type === "mingguan") {
         expiryDate.setDate(expiryDate.getDate() + 7);
       } else if (type === "monthly" || type === "bulanan") {

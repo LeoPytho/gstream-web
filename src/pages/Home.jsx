@@ -121,14 +121,9 @@ function Home() {
         </div>
       </div>
 
-      {/* Order Here Section - Combined Products */}
-      <OrderSection loading={loading} products={allProducts} />
 
       {/* Live Show Section */}
       <LiveShowSection loading={loading} />
-
-      {/* Replay Show Section */}
-      <ReplayShowSection loading={loading} />
     </div>
   );
 }
@@ -260,7 +255,7 @@ function LiveShowSection({ loading }) {
   const fetchLiveShows = async () => {
     try {
       const response = await fetch(
-        "https://v2.jkt48connect.my.id/api/mux/live-streams?apikey=JKTCONNECT&username=vzy&password=vzy"
+        "https://v2.jkt48connect.com/api/mux/live-streams?apikey=JKTCONNECT&username=vzy&password=vzy"
       );
       const result = await response.json();
 

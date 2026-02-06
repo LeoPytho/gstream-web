@@ -350,31 +350,6 @@ const Header = () => {
         >
           <span className="logo-bold">GSTREAM</span>
         </div>
-
-        {/* Menu Icon (Titik 3) */}
-        <div className="nav-icons">
-          <div
-            className={`dropdown ${dropdowns.menu ? "show" : ""}`}
-            ref={(el) => (dropdownRefs.current.menu = el)}
-          >
-            <button
-              className="icon-btn menu-btn"
-              onClick={() => handleDropdownToggle("menu")}
-              aria-label="Menu"
-            >
-              <FaEllipsisV />
-            </button>
-            <div
-              className={`dropdown-menu ${
-                dropdowns.menu ? "show" : ""
-              } dropdown-menu-right`}
-            >
-              <button className="dropdown-item" onClick={handleVerifyClick}>
-                Verify
-              </button>
-            </div>
-          </div>
-        </div>
       </nav>
     </header>
   );

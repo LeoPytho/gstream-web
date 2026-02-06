@@ -6,338 +6,481 @@ import "../styles/live-stream.css";
 function LiveStream() {
   const { playbackId } = useParams();
   const navigate = useNavigate();
+
+  // State untuk verifikasi
+  const [isVerified, setIsVerified] = useState(false);
+  const [showVerification, setShowVerification] = useState(true);
+  const [verificationData, setVerificationData] = useState({
+    email: "",
+    code: "",
+  });
+  const [verificationError, setVerificationError] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [clientIP, setClientIP] = useState("");
+
+  // State untuk stream
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [streamData, setStreamData] = useState(null);
-  const [accessGranted, setAccessGranted] = useState(false);
+  const [showInfo, setShowInfo] = useState(null);
+  const [members, setMembers] = useState([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
 
-  // Fungsi untuk mengecek apakah membership sudah expired
-  const isMembershipExpired = (registeredDate, membershipType) => {
+  // Fungsi untuk mendapatkan IP address client
+  const fetchClientIP = async () => {
     try {
-      const now = new Date();
-      const regDate = new Date(registeredDate);
-
-      if (isNaN(regDate.getTime())) {
-        console.error("Invalid date format:", registeredDate);
-        return true;
-      }
-
-      const type = (membershipType || "monthly").toLowerCase();
-      let expiryDate = new Date(regDate);
-
-      if (type === "weekly" || type === "mingguan") {
-        expiryDate.setDate(expiryDate.getDate() + 7);
-      } else if (type === "monthly" || type === "bulanan") {
-        expiryDate.setMonth(expiryDate.getMonth() + 1);
-      } else if (type === "yearly" || type === "tahunan") {
-        expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-      }
-
-      console.log("Registered:", regDate);
-      console.log("Expiry:", expiryDate);
-      console.log("Now:", now);
-      console.log("Is Expired:", now > expiryDate);
-
-      return now > expiryDate;
+      const response = await fetch("https://api.ipify.org?format=json");
+      const data = await response.json();
+      setClientIP(data.ip);
+      return data.ip;
     } catch (error) {
-      console.error("Error checking expiry:", error);
-      return true;
+      console.error("Error fetching IP:", error);
+      // Fallback jika tidak bisa mendapatkan IP
+      return "unknown";
     }
   };
 
-  // Fungsi untuk mendapatkan sisa hari membership
-  const getRemainingDays = (registeredDate, membershipType) => {
+  // Fungsi untuk verifikasi code dengan API
+  const verifyAccess = async () => {
+    if (!verificationData.email || !verificationData.code) {
+      setVerificationError("Email dan code wajib diisi");
+      return;
+    }
+
+    setVerifying(true);
+    setVerificationError("");
+
     try {
-      const now = new Date();
-      const regDate = new Date(registeredDate);
+      // Dapatkan IP client
+      const ip = clientIP || (await fetchClientIP());
 
-      if (isNaN(regDate.getTime())) {
-        return "Tidak diketahui";
-      }
-
-      const type = (membershipType || "monthly").toLowerCase();
-      let expiryDate = new Date(regDate);
-
-      if (type === "weekly" || type === "mingguan") {
-        expiryDate.setDate(expiryDate.getDate() + 7);
-      } else if (type === "monthly" || type === "bulanan") {
-        expiryDate.setMonth(expiryDate.getMonth() + 1);
-      } else if (type === "yearly" || type === "tahunan") {
-        expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-      }
-
-      const diffTime = expiryDate - now;
-      const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      if (daysLeft <= 0) {
-        return "Sudah Expired";
-      }
-
-      return `${daysLeft} hari lagi`;
-    } catch (error) {
-      console.error("Error calculating remaining days:", error);
-      return "Tidak diketahui";
-    }
-  };
-
-  // Fungsi untuk mendapatkan display membership type
-  const getMembershipTypeDisplay = (type) => {
-    const typeStr = (type || "monthly").toLowerCase();
-    if (typeStr === "weekly" || typeStr === "mingguan") {
-      return "⭐ Mingguan";
-    } else if (typeStr === "monthly" || typeStr === "bulanan") {
-      return "💎 Bulanan";
-    } else if (typeStr === "yearly" || typeStr === "tahunan") {
-      return "👑 Tahunan";
-    }
-    return type;
-  };
-
-  // Fungsi untuk memvalidasi data localStorage dengan API
-  const validateUserWithAPI = async (userData) => {
-    try {
-      console.log("Validating user data with API...");
-      
-      const response = await fetch(
-        "https://v2.jkt48connect.my.id/api/verify/check?apikey=JKTCONNECT&username=vzy&password=vzy",
+      // Verifikasi code menggunakan API
+      const verifyResponse = await fetch(
+        "https://v2.jkt48connect.com/api/codes/verify",
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            email: userData.email,
-            whatsapp: userData.whatsapp,
+            email: verificationData.email,
+            code: verificationData.code,
+            apikey: "JKTCONNECT",
           }),
-        }
+        },
       );
 
-      const data = await response.json();
+      const verifyData = await verifyResponse.json();
 
-      if (!response.ok || !data.success) {
-        console.error("User validation failed:", data.message);
-        return false;
-      }
+      if (verifyData.status && verifyData.data.is_valid) {
+        // Cek apakah code sudah digunakan
+        const listResponse = await fetch(
+          `https://v2.jkt48connect.com/api/codes/list?email=${verificationData.email}&apikey=JKTCONNECT`,
+        );
+        const listData = await listResponse.json();
 
-      // Cek status verifikasi dari API
-      const isTrueValue = (value) => {
-        if (typeof value === "boolean") return value;
-        if (typeof value === "string") {
-          return value.toLowerCase() === "true";
+        if (listData.status && listData.data.codes) {
+          const userCode = listData.data.codes.find(
+            (c) => c.code === verificationData.code,
+          );
+
+          if (userCode) {
+            // Cek apakah IP sudah cocok (untuk validasi lebih ketat)
+            if (
+              userCode.ip_address &&
+              userCode.ip_address !== "" &&
+              userCode.ip_address !== ip
+            ) {
+              setVerificationError(
+                "Code ini sudah digunakan dari IP address yang berbeda",
+              );
+              setVerifying(false);
+              return;
+            }
+
+            // Gunakan code (menandai sebagai used dan menyimpan IP)
+            const useResponse = await fetch(
+              "https://v2.jkt48connect.com/api/codes/use",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  email: verificationData.email,
+                  code: verificationData.code,
+                  apikey: "JKTCONNECT",
+                }),
+              },
+            );
+
+            const useData = await useResponse.json();
+
+            if (useData.status) {
+              // Simpan data verifikasi ke localStorage
+              localStorage.setItem(
+                "stream_verification",
+                JSON.stringify({
+                  email: verificationData.email,
+                  code: verificationData.code,
+                  ip: ip,
+                  timestamp: Date.now(),
+                }),
+              );
+
+              setIsVerified(true);
+              setShowVerification(false);
+              setVerifying(false);
+            } else {
+              setVerificationError(useData.message || "Gagal menggunakan code");
+              setVerifying(false);
+            }
+          } else {
+            setVerificationError("Code tidak ditemukan untuk email ini");
+            setVerifying(false);
+          }
+        } else {
+          setVerificationError("Gagal memverifikasi code");
+          setVerifying(false);
         }
-        return false;
-      };
-
-      const hasStatusPengecekan = "status_pengecekan_" in data.data;
-      const hasStatus = "status" in data.data;
-      const hasColumn3 = "column_3" in data.data;
-      
-      let isVerified = false;
-      
-      if (hasStatusPengecekan) {
-        isVerified = isTrueValue(data.data.status_pengecekan_);
-      } else if (hasStatus) {
-        isVerified = data.data.status && data.data.status.toLowerCase() === "valid";
-      } else if (hasColumn3) {
-        isVerified = isTrueValue(data.data.column_3);
+      } else {
+        setVerificationError(
+          verifyData.message || "Code tidak valid atau sudah kedaluwarsa",
+        );
+        setVerifying(false);
       }
-
-      if (!isVerified) {
-        console.error("User data found but not verified in API");
-        return false;
-      }
-
-      console.log("User validation successful");
-      return true;
     } catch (error) {
-      console.error("Error validating user with API:", error);
-      return false;
+      console.error("Error verifying access:", error);
+      setVerificationError(
+        "Terjadi kesalahan saat verifikasi. Silakan coba lagi.",
+      );
+      setVerifying(false);
     }
   };
 
-  // Fungsi untuk membersihkan localStorage
-  const clearLocalStorage = () => {
-    localStorage.removeItem("jkt48_verified_user");
-    localStorage.removeItem("jkt48_auth_token");
-    console.log("LocalStorage cleared");
+  // Fungsi untuk cek verifikasi yang sudah ada
+  const checkExistingVerification = async () => {
+    const stored = localStorage.getItem("stream_verification");
+    if (stored) {
+      try {
+        const verificationInfo = JSON.parse(stored);
+        const ip = await fetchClientIP();
+
+        // Cek apakah verifikasi masih valid (dalam 5 jam)
+        const hoursDiff =
+          (Date.now() - verificationInfo.timestamp) / (1000 * 60 * 60);
+        if (hoursDiff > 5) {
+          localStorage.removeItem("stream_verification");
+          return false;
+        }
+
+        // Verifikasi ulang dengan API
+        const verifyResponse = await fetch(
+          "https://v2.jkt48connect.com/api/codes/verify",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email: verificationInfo.email,
+              code: verificationInfo.code,
+              apikey: "JKTCONNECT",
+            }),
+          },
+        );
+
+        const verifyData = await verifyResponse.json();
+
+        // Cek apakah IP masih sama
+        if (
+          verifyData.status &&
+          verifyData.data.is_valid &&
+          verificationInfo.ip === ip
+        ) {
+          setIsVerified(true);
+          setShowVerification(false);
+          setVerificationData({
+            email: verificationInfo.email,
+            code: verificationInfo.code,
+          });
+          return true;
+        } else {
+          localStorage.removeItem("stream_verification");
+          return false;
+        }
+      } catch (error) {
+        console.error("Error checking verification:", error);
+        localStorage.removeItem("stream_verification");
+        return false;
+      }
+    }
+    return false;
   };
 
+  // Fungsi untuk mendapatkan show terdekat dari API
+  const fetchNearestShow = async () => {
+    try {
+      const response = await fetch(
+        "https://v2.jkt48connect.com/api/jkt48/theater?apikey=JKTCONNECT",
+      );
+      const data = await response.json();
+
+      if (data.theater && data.theater.length > 0) {
+        const now = new Date();
+        let nearestShow = null;
+        let smallestDiff = Infinity;
+
+        data.theater.forEach((show) => {
+          const showDate = new Date(show.date);
+          const diff = Math.abs(showDate - now);
+          if (diff < smallestDiff) {
+            smallestDiff = diff;
+            nearestShow = show;
+          }
+        });
+
+        return nearestShow;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching show data:", error);
+      return null;
+    }
+  };
+
+  // Fungsi untuk mendapatkan lineup member dari API
+  const fetchShowMembers = async (showId) => {
+    try {
+      setLoadingMembers(true);
+      const response = await fetch(
+        `https://v2.jkt48connect.com/api/jkt48/theater/${showId}?apikey=JKTCONNECT`,
+      );
+      const data = await response.json();
+
+      if (data.shows && data.shows.length > 0 && data.shows[0].members) {
+        setMembers(data.shows[0].members);
+      }
+      setLoadingMembers(false);
+    } catch (error) {
+      console.error("Error fetching members:", error);
+      setLoadingMembers(false);
+    }
+  };
+
+  // Effect untuk inisialisasi
   useEffect(() => {
-    const checkAccess = async () => {
-      try {
-        // Cek apakah ada playback ID
-        if (!playbackId) {
-          setError("Playback ID tidak ditemukan");
-          setLoading(false);
-          return;
-        }
+    const init = async () => {
+      await fetchClientIP();
+      const verified = await checkExistingVerification();
 
-        // Ambil data membership dari localStorage
-        const verifiedUserStr = localStorage.getItem("jkt48_verified_user");
-
-        if (!verifiedUserStr) {
-          setError(
-            "Anda belum memiliki membership aktif. Silakan verifikasi terlebih dahulu."
-          );
-          setAccessGranted(false);
-          setLoading(false);
-          return;
-        }
-
-        let userData;
-        try {
-          userData = JSON.parse(verifiedUserStr);
-        } catch (parseError) {
-          console.error("Error parsing userData:", parseError);
-          clearLocalStorage();
-          setError("Data membership tidak valid");
-          setAccessGranted(false);
-          setLoading(false);
-          return;
-        }
-
-        console.log("User data loaded:", userData);
-
-        // Validasi minimal: hanya perlu token, membershipType, dan tanggal registrasi
-        if (!userData.token) {
-          clearLocalStorage();
-          setError("Token tidak ditemukan. Silakan verifikasi ulang.");
-          setAccessGranted(false);
-          setLoading(false);
-          return;
-        }
-
-        if (!userData.membershipType && !userData.membership_type) {
-          clearLocalStorage();
-          setError("Tipe membership tidak ditemukan.");
-          setAccessGranted(false);
-          setLoading(false);
-          return;
-        }
-
-        // Validasi email dan whatsapp
-        if (!userData.email || !userData.whatsapp) {
-          clearLocalStorage();
-          setError("Data email atau WhatsApp tidak lengkap.");
-          setAccessGranted(false);
-          setLoading(false);
-          return;
-        }
-
-        // VALIDASI DENGAN API
-        console.log("Checking user validity with API...");
-        const isValidInAPI = await validateUserWithAPI(userData);
-        
-        if (!isValidInAPI) {
-          clearLocalStorage();
-          setError(
-            "Data membership Anda tidak valid atau telah dihapus dari sistem. Silakan verifikasi ulang."
-          );
-          setAccessGranted(false);
-          setLoading(false);
-          return;
-        }
-
-        // Cari registered_date dari berbagai sumber yang mungkin
-        let registeredDate =
-          userData.registered_date || 
-          userData.registeredDate ||
-          (userData.verifiedAt && userData.verifiedAt.fullDate);
-
-        if (!registeredDate) {
-          clearLocalStorage();
-          setError("Data registrasi tidak ditemukan.");
-          setAccessGranted(false);
-          setLoading(false);
-          return;
-        }
-
-        // Ambil membershipType (prioritas camelCase karena data Anda menggunakan ini)
-        const membershipType =
-          userData.membershipType || userData.membership_type;
-
-        // CEK APAKAH SUDAH EXPIRED
-        if (isMembershipExpired(registeredDate, membershipType)) {
-          // Hapus data membership yang expired
-          clearLocalStorage();
-          setError(
-            "Membership Anda telah berakhir. Silakan perpanjang membership."
-          );
-          setAccessGranted(false);
-          setLoading(false);
-          return;
-        }
-
-        // Jika semua validasi lolos, berikan akses
-        setAccessGranted(true);
-
-        // Set stream data
-        setTimeout(() => {
-          setStreamData({
-            playbackId: playbackId,
-            title: "Live Stream JKT48",
-            viewerId: userData.token,
-            membershipType: getMembershipTypeDisplay(membershipType),
-            remainingTime: getRemainingDays(registeredDate, membershipType),
-            email: userData.email || "user@jkt48connect.com",
-          });
-          setLoading(false);
-        }, 500);
-      } catch (error) {
-        console.error("Error checking access:", error);
-        clearLocalStorage();
-        setError("Terjadi kesalahan saat memeriksa akses. Silakan coba lagi.");
-        setAccessGranted(false);
+      if (verified) {
+        loadStreamData();
+      } else {
         setLoading(false);
       }
     };
 
-    checkAccess();
-  }, [playbackId]);
+    init();
+  }, []);
+
+  // Effect untuk load stream data setelah verifikasi
+  useEffect(() => {
+    if (isVerified) {
+      loadStreamData();
+    }
+  }, [isVerified]);
+
+  const loadStreamData = async () => {
+    try {
+      setLoading(true);
+
+      if (!playbackId) {
+        setError("Playback ID tidak ditemukan");
+        setLoading(false);
+        return;
+      }
+
+      const nearestShow = await fetchNearestShow();
+      if (nearestShow) {
+        setShowInfo({
+          title: nearestShow.title,
+          showId: nearestShow.id,
+        });
+        await fetchShowMembers(nearestShow.id);
+      }
+
+      setTimeout(() => {
+        setStreamData({
+          playbackId: playbackId,
+          title: nearestShow ? nearestShow.title : "Live Stream JKT48",
+          viewerId: "viewer-" + Date.now(),
+        });
+        setLoading(false);
+      }, 500);
+    } catch (error) {
+      console.error("Error loading stream:", error);
+      setError("Terjadi kesalahan saat memuat stream. Silakan coba lagi.");
+      setLoading(false);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setVerificationData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+    setVerificationError("");
+  };
+
+  const handleVerificationSubmit = (e) => {
+    e.preventDefault();
+    verifyAccess();
+  };
 
   const goBack = () => {
     navigate(-1);
   };
 
-  const goToVerification = () => {
-    navigate("/verify");
+  const handleLogout = () => {
+    localStorage.removeItem("stream_verification");
+    setIsVerified(false);
+    setShowVerification(true);
+    setVerificationData({ email: "", code: "" });
   };
 
+  // Tampilan Verifikasi
+  if (showVerification && !isVerified) {
+    return (
+      <div className="stream-container">
+        <div className="stream-background">
+          <img src="https://jkt48.com/images/og-image.jpg" alt="background" />
+          <div className="background-overlay"></div>
+        </div>
+
+        <div className="verification-container">
+          <div className="verification-card">
+            <div className="verification-header">
+              <h1 className="verification-title">Verifikasi Akses</h1>
+              <p className="verification-subtitle">
+                Masukkan email dan code untuk mengakses live stream
+              </p>
+            </div>
+
+            <form
+              onSubmit={handleVerificationSubmit}
+              className="verification-form"
+            >
+              <div className="form-group">
+                <label htmlFor="email" className="form-label">
+                   Email
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  className="form-input"
+                  placeholder="masukkan email anda"
+                  value={verificationData.email}
+                  onChange={handleInputChange}
+                  required
+                  disabled={verifying}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="code" className="form-label">
+                   Verification Code
+                </label>
+                <input
+                  type="text"
+                  id="code"
+                  name="code"
+                  className="form-input"
+                  placeholder="masukkan code verifikasi"
+                  value={verificationData.code}
+                  onChange={handleInputChange}
+                  required
+                  disabled={verifying}
+                  style={{ textTransform: "uppercase" }}
+                />
+              </div>
+
+              {verificationError && (
+                <div className="verification-error">
+                  <span className="error-icon"></span>
+                  {verificationError}
+                </div>
+              )}
+
+              <button type="submit" className="btn-verify" disabled={verifying}>
+                {verifying ? (
+                  <>
+                    <div className="loading-spinner-small"></div>
+                    Memverifikasi...
+                  </>
+                ) : (
+                  <>
+                    <span>✓</span>
+                    Verifikasi Akses
+                  </>
+                )}
+              </button>
+
+              <div className="verification-info">
+                <p>
+                  <strong>ℹ Informasi:</strong>
+                </p>
+                <ul>
+                  <li>Code verifikasi hanya dapat digunakan sekali</li>
+                  <li>IP address akan dicatat untuk keamanan</li>
+                  <li>Akses berlaku selama 5 jam</li>
+                </ul>
+              </div>
+            </form>
+
+            <button onClick={goBack} className="btn-back-verification">
+              ← Kembali
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Tampilan Loading
   if (loading) {
     return (
       <div className="stream-container">
+        <div className="stream-background">
+          <img src="https://jkt48.com/images/logo.svg" alt="background" />
+          <div className="background-overlay"></div>
+        </div>
         <div className="stream-loading">
           <div className="loading-spinner"></div>
           <p>Memuat live stream...</p>
-          <p style={{ fontSize: "12px", marginTop: "10px", color: "#666" }}>
-            Memvalidasi akses Anda...
-          </p>
+          <p className="loading-subtitle">Mengambil informasi show...</p>
         </div>
       </div>
     );
   }
 
-  if (error || !accessGranted || !streamData) {
+  // Tampilan Error
+  if (error || !streamData) {
     return (
       <div className="stream-container">
+        <div className="stream-background">
+          <img src="https://jkt48.com/images/og-image.jpg" alt="background" />
+          <div className="background-overlay"></div>
+        </div>
         <div className="error-container">
-          <div className="error-icon">🔒</div>
-          <h2>Akses Ditolak</h2>
-          <p>{error || "Anda tidak memiliki akses ke live stream ini"}</p>
-          <div
-            style={{
-              display: "flex",
-              gap: "10px",
-              marginTop: "20px",
-              justifyContent: "center",
-              flexWrap: "wrap",
-            }}
-          >
-            <button className="btn btn-primary" onClick={goToVerification}>
-              Beli Membership
-            </button>
-            <button className="btn btn-back" onClick={goBack}>
-              Kembali
+          <div className="error-icon">⚠️</div>
+          <h2>Terjadi Kesalahan</h2>
+          <p>{error || "Tidak dapat memuat live stream"}</p>
+          <div className="error-actions">
+            <button onClick={goBack} className="btn btn-back">
+              ← Kembali
             </button>
           </div>
         </div>
@@ -345,54 +488,93 @@ function LiveStream() {
     );
   }
 
+  // Tampilan Stream (setelah verifikasi berhasil)
   return (
     <div className="stream-container">
+      <div className="stream-background">
+        <img src="https://jkt48.com/images/logo.svg" alt="background" />
+        <div className="background-overlay"></div>
+      </div>
+
       <div className="stream-wrapper">
+        {/* Header */}
         <div className="stream-header">
-          <button className="btn-back" onClick={goBack}>
+          <button onClick={goBack} className="btn-back">
             <span className="back-icon">←</span>
-            <span>Kembali</span>
+            Kembali
           </button>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "flex-end",
-              fontSize: "12px",
-              color: "rgba(255, 255, 255, 0.7)",
-            }}
-          >
-            <span>Membership: {streamData.membershipType}</span>
-            <span>Berlaku: {streamData.remainingTime}</span>
+
+          <div className="header-center">
+            {showInfo && <h1 className="stream-title">{showInfo.title}</h1>}
+          </div>
+
+          <button onClick={handleLogout} className="btn-logout">
+           Logout
+          </button>
+        </div>
+
+        {/* Player Container */}
+        <div className="player-container">
+          <div className="player-wrapper">
+            <MuxPlayer
+              streamType="live"
+              playbackId={streamData.playbackId}
+              metadata={{
+                video_title: streamData.title,
+                viewer_user_id: streamData.viewerId,
+              }}
+              autoPlay
+              muted={false}
+              primaryColor="#e50914"
+              secondaryColor="#ffffff"
+            />
           </div>
         </div>
 
-        <div className="player-container">
-          <MuxPlayer
-            playbackId={streamData.playbackId}
-            metadata={{
-              video_id: streamData.playbackId,
-              video_title: streamData.title,
-              viewer_user_id: streamData.viewerId,
-            }}
-            streamType="live"
-          />
-        </div>
+        {/* Lineup Members Section */}
+        {members.length > 0 && (
+          <div className="lineup-section">
+            <div className="lineup-container">
+              <div className="lineup-header">
+                <h2 className="lineup-title">
+                  <span className="lineup-icon">👥</span>
+                  Lineup Show
+                </h2>
+                <div className="lineup-count">{members.length} Member</div>
+              </div>
 
+              {loadingMembers ? (
+                <div className="lineup-loading">
+                  <div className="loading-spinner-small"></div>
+                  <p>Memuat lineup...</p>
+                </div>
+              ) : (
+                <div className="members-grid">
+                  {members.map((member) => (
+                    <div key={member.id} className="member-card">
+                      <div className="member-avatar-wrapper">
+                        <img
+                          src={member.img}
+                          alt={member.name}
+                          className="member-avatar-img"
+                        />
+                      </div>
+                      <div className="member-info">
+                        <p className="member-name">{member.name}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Footer */}
         <div className="stream-footer">
           <div className="powered-by">
-            <span>POWERED BY</span>
-            <svg className="mux-logo" viewBox="0 0 200 60" fill="currentColor">
-              <text
-                x="10"
-                y="40"
-                fontSize="32"
-                fontWeight="bold"
-                fontFamily="Arial, sans-serif"
-              >
-                JKT48Connect
-              </text>
-            </svg>
+            <span className="powered-text">POWERED BY</span>
+            <span className="brand-name">JKT48Connect</span>
           </div>
         </div>
       </div>
