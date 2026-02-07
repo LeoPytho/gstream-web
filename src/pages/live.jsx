@@ -9,7 +9,7 @@ function LiveStream() {
 
   // State untuk verifikasi
   const [isVerified, setIsVerified] = useState(false);
-  const [showVerification, setShowVerification] = useState(true);
+  const [showVerification, setShowVerification] = useState(false); // UBAH: default false
   const [verificationData, setVerificationData] = useState({
     email: "",
     code: "",
@@ -166,11 +166,12 @@ function LiveStream() {
         const verificationInfo = JSON.parse(stored);
         const ip = await fetchClientIP();
 
-        // Cek apakah verifikasi masih valid (dalam 5 jam)
+        // UBAH: Cek apakah verifikasi masih valid (dalam 6 jam)
         const hoursDiff =
           (Date.now() - verificationInfo.timestamp) / (1000 * 60 * 60);
-        if (hoursDiff > 5) {
+        if (hoursDiff > 6) {
           localStorage.removeItem("stream_verification");
+          setShowVerification(true); // TAMBAH: Tampilkan form verifikasi
           return false;
         }
 
@@ -207,14 +208,17 @@ function LiveStream() {
           return true;
         } else {
           localStorage.removeItem("stream_verification");
+          setShowVerification(true); // TAMBAH: Tampilkan form verifikasi
           return false;
         }
       } catch (error) {
         console.error("Error checking verification:", error);
         localStorage.removeItem("stream_verification");
+        setShowVerification(true); // TAMBAH: Tampilkan form verifikasi
         return false;
       }
     }
+    setShowVerification(true); // TAMBAH: Tampilkan form verifikasi jika tidak ada stored
     return false;
   };
 
@@ -282,7 +286,7 @@ function LiveStream() {
     };
 
     init();
-  }, []);
+  }, []); // PENTING: Dependency array kosong agar hanya run sekali
 
   // Effect untuk load stream data setelah verifikasi
   useEffect(() => {
@@ -374,7 +378,7 @@ function LiveStream() {
             >
               <div className="form-group">
                 <label htmlFor="email" className="form-label">
-                   Email
+                  Email
                 </label>
                 <input
                   type="email"
@@ -391,7 +395,7 @@ function LiveStream() {
 
               <div className="form-group">
                 <label htmlFor="code" className="form-label">
-                   Verification Code
+                  Verification Code
                 </label>
                 <input
                   type="text"
@@ -435,7 +439,7 @@ function LiveStream() {
                 <ul>
                   <li>Code verifikasi hanya dapat digunakan sekali</li>
                   <li>IP address akan dicatat untuk keamanan</li>
-                  <li>Akses berlaku selama 5 jam</li>
+                  <li>Akses berlaku selama 6 jam</li>
                 </ul>
               </div>
             </form>
@@ -509,7 +513,7 @@ function LiveStream() {
           </div>
 
           <button onClick={handleLogout} className="btn-logout">
-           Logout
+            Logout
           </button>
         </div>
 
