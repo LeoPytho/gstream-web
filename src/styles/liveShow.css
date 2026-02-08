@@ -15,19 +15,20 @@
   justify-content: center;
   padding: 60px 20px;
   text-align: center;
+  background: transparent; /* FIXED: Removed background */
 }
 
 .checking-live-status p {
   margin-top: 16px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.7); /* FIXED: Changed to white/transparent */
   font-size: 16px;
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid #f0f0f0;
-  border-top: 4px solid #667eea;
+  border: 4px solid rgba(255, 255, 255, 0.1); /* FIXED: Changed to transparent white */
+  border-top: 4px solid #e50914; /* FIXED: Changed to red theme */
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -45,7 +46,7 @@
   justify-content: center;
   padding: 60px 20px;
   text-align: center;
-  background: linear-gradient(135deg, #F9F9F9 0%, #F9F9F9 100%);
+  background: transparent; /* FIXED: Removed gray background */
   border-radius: 16px;
   margin-bottom: 40px;
 }
@@ -58,13 +59,13 @@
 .no-live-shows h3 {
   font-size: 24px;
   font-weight: 700;
-  color: #2c3e50;
+  color: #ffffff; /* FIXED: Changed to white */
   margin: 0 0 12px 0;
 }
 
 .no-live-shows p {
   font-size: 16px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.6); /* FIXED: Changed to white/transparent */
   margin: 0 0 24px 0;
   max-width: 400px;
 }
@@ -74,9 +75,9 @@
   align-items: center;
   gap: 8px;
   padding: 12px 24px;
-  background: linear-gradient(135deg, #96131e 0%, #96131e 100%);
+  background: rgba(255, 255, 255, 0.1); /* FIXED: Changed to transparent white */
   color: white;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.2); /* FIXED: Added border */
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
@@ -85,8 +86,10 @@
 }
 
 .notify-btn:hover {
+  background: rgba(255, 255, 255, 0.15); /* FIXED: Changed hover */
+  border-color: rgba(255, 255, 255, 0.3);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(126, 11, 11, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .notify-btn:active {
@@ -138,17 +141,20 @@
 
 /* Live Show Card */
 .live-show-card {
-  background: white;
+  background: rgba(255, 255, 255, 0.05); /* FIXED: Changed to transparent dark */
+  border: 1px solid rgba(255, 255, 255, 0.1); /* FIXED: Added border */
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); /* FIXED: Darker shadow */
   transition: all 0.3s ease;
   cursor: pointer;
+  backdrop-filter: blur(10px); /* FIXED: Added blur effect */
 }
 
 .live-show-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5); /* FIXED: Darker shadow */
+  border-color: rgba(229, 9, 20, 0.5); /* FIXED: Red border on hover */
 }
 
 /* Thumbnail */
@@ -293,12 +299,13 @@
 /* Live Show Info */
 .live-show-info {
   padding: 16px;
+  background: rgba(255, 255, 255, 0.03); /* FIXED: Added subtle background */
 }
 
 .live-show-title {
   font-size: 16px;
   font-weight: 600;
-  color: #2c3e50;
+  color: #ffffff; /* FIXED: Changed to white */
   margin: 0 0 8px 0;
   line-height: 1.4;
   display: -webkit-box;
@@ -310,7 +317,7 @@
 
 .live-show-host {
   font-size: 13px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.7); /* FIXED: Changed to white/transparent */
   margin: 0 0 12px 0;
   display: flex;
   align-items: center;
@@ -353,21 +360,24 @@
 }
 
 .watch-live-btn.offline {
-  background: #f0f0f0;
-  color: #666;
+  background: rgba(255, 255, 255, 0.1); /* FIXED: Changed to transparent */
+  color: rgba(255, 255, 255, 0.7); /* FIXED: Changed to white */
+  border: 1px solid rgba(255, 255, 255, 0.2); /* FIXED: Added border */
 }
 
 .watch-live-btn.offline:hover {
-  background: #e0e0e0;
+  background: rgba(255, 255, 255, 0.15); /* FIXED: Changed hover */
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 /* Replay Card Specific Styles */
 .replay-card {
-  border: 1px solid #e8e8e8;
+  border: 1px solid rgba(102, 126, 234, 0.2); /* FIXED: Changed to transparent purple */
 }
 
 .replay-card:hover {
-  border-color: #667eea;
+  border-color: rgba(102, 126, 234, 0.5); /* FIXED: Brighter on hover */
 }
 
 /* Tablet Styles */
