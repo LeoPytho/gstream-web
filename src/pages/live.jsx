@@ -389,12 +389,12 @@ function LiveStream() {
       <div className="verification-page">
         <div className="verification-container">
           <div className="verification-card">
-            <h1>🔐 Verifikasi Akses</h1>
+            <h1>Verifikasi Akses</h1>
             <p>Masukkan email dan code untuk mengakses live stream</p>
 
             <form onSubmit={handleVerificationSubmit}>
               <div className="form-group">
-                <label>📧 Email</label>
+                <label>Email</label>
                 <input
                   type="email"
                   name="email"
@@ -406,7 +406,7 @@ function LiveStream() {
               </div>
 
               <div className="form-group">
-                <label>🔑 Verification Code</label>
+                <label>Verification Code</label>
                 <input
                   type="text"
                   name="code"
@@ -419,7 +419,7 @@ function LiveStream() {
 
               {verificationError && (
                 <div className="error-message">
-                  ⚠️ {verificationError}
+                  {verificationError}
                 </div>
               )}
 
@@ -440,7 +440,7 @@ function LiveStream() {
             </form>
 
             <div className="verification-info">
-              <p>ℹ️ <strong>Informasi:</strong></p>
+              <p>!<strong>Informasi:</strong></p>
               <ul>
                 <li>Code verifikasi hanya dapat digunakan sekali</li>
                 <li>IP address akan dicatat untuk keamanan</li>
@@ -476,7 +476,7 @@ function LiveStream() {
     return (
       <div className="error-container">
         <div className="error-content">
-          <div className="error-icon">⚠️</div>
+          <div className="error-icon"></div>
           <h2>Terjadi Kesalahan</h2>
           <p>{error || "Tidak dapat memuat live stream"}</p>
           <button onClick={goBack} className="back-button">
@@ -498,12 +498,12 @@ function LiveStream() {
 
         {showInfo && (
           <div className="show-title">
-            <span>🎭 {showInfo.title}</span>
+            <span>{showInfo.title}</span>
           </div>
         )}
 
         <button onClick={handleLogout} className="logout-btn">
-          🚪 Logout
+           Logout
         </button>
       </div>
 
@@ -524,7 +524,7 @@ function LiveStream() {
       {members.length > 0 && (
         <div className="members-section">
           <div className="members-header">
-            <h3>👥 Lineup Show</h3>
+            <h3>Lineup Show</h3>
             <span className="member-count">{members.length} Member</span>
           </div>
 
@@ -555,3 +555,4 @@ function LiveStream() {
 }
 
 export default LiveStream;
+
