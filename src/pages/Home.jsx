@@ -255,7 +255,7 @@ function LiveShowSection({ loading }) {
   const fetchLiveShows = async () => {
     try {
       const response = await fetch(
-        "https://v2.jkt48connect.com/api/mux/live-streams?apikey=JKTCONNECT&username=vzy&password=vzy"
+        "https://v2.jkt48connect.com/api/wotaverse/live-streams?apikey=JKTCONNECT&username=vzy&password=vzy"
       );
       const result = await response.json();
 
@@ -637,3 +637,4 @@ function ReplayShowCard({ show }) {
 }
 
 export default Home;
+
