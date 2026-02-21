@@ -86,9 +86,25 @@ function LiveStream() {
         return;
       }
 
-      // Step 2: Cek apakah code sudah digunakan dari verify response
-      if (verifyData.data.is_used) {
-        // Jika sudah digunakan, cek apakah IP sama
+      const codeData = verifyData.data;
+
+      // Step 2: Cek is_active terlebih dahulu
+      if (!codeData.is_active) {
+        setVerificationError("Code ini sudah tidak aktif");
+        setVerifying(false);
+        return;
+      }
+
+      // Step 3: Cek usage_count vs usage_limit
+      const usageCount = parseInt(codeData.usage_count) || 0;
+      const usageLimit = parseInt(codeData.usage_limit) || 1;
+      const hasUsageRemaining = usageCount < usageLimit;
+
+      console.log(`Usage: ${usageCount}/${usageLimit}, hasRemaining: ${hasUsageRemaining}`);
+
+      // Jika usage sudah habis (is_used true DAN tidak ada sisa usage)
+      if (codeData.is_used && !hasUsageRemaining) {
+        // Cek apakah IP sama (untuk allow re-login dari device yang sama)
         const listResponse = await fetch(
           `https://v2.jkt48connect.com/api/codes/list?email=${verificationData.email}&apikey=JKTCONNECT`
         );
@@ -100,7 +116,7 @@ function LiveStream() {
           );
 
           if (userCode) {
-            // Cek IP address - DIPERMUDAH: Izinkan jika IP sama ATAU IP belum tercatat
+            // Izinkan jika IP sama atau belum tercatat
             if (
               userCode.ip_address &&
               userCode.ip_address !== "" &&
@@ -113,7 +129,7 @@ function LiveStream() {
               return;
             }
 
-            // Jika IP sama atau IP belum tercatat, izinkan akses dan simpan session
+            // IP sama atau belum tercatat, izinkan akses
             const sessionData = {
               email: verificationData.email,
               code: verificationData.code,
@@ -121,9 +137,9 @@ function LiveStream() {
               timestamp: Date.now(),
               verified: true,
             };
-            
+
             localStorage.setItem("stream_verification", JSON.stringify(sessionData));
-            
+
             setIsVerified(true);
             setShowVerification(false);
             setVerifying(false);
@@ -131,13 +147,13 @@ function LiveStream() {
           }
         }
 
-        setVerificationError("Code sudah digunakan");
+        setVerificationError("Code sudah tidak dapat digunakan");
         setVerifying(false);
         return;
       }
 
-      // Step 3: Code belum digunakan, gunakan code
-      console.log("Code is valid and not used, attempting to use...");
+      // Step 4: Code masih punya sisa usage, gunakan code
+      console.log("Code is valid and has remaining usage, attempting to use...");
 
       const useResponse = await fetch(
         "https://v2.jkt48connect.com/api/codes/use",
@@ -166,9 +182,9 @@ function LiveStream() {
           timestamp: Date.now(),
           verified: true,
         };
-        
+
         localStorage.setItem("stream_verification", JSON.stringify(sessionData));
-        
+
         setIsVerified(true);
         setShowVerification(false);
         setVerifying(false);
@@ -188,7 +204,7 @@ function LiveStream() {
   // FIXED: Fungsi untuk cek verifikasi yang sudah ada (DIPERMUDAH)
   const checkExistingVerification = async () => {
     const stored = localStorage.getItem("stream_verification");
-    
+
     if (!stored) {
       console.log("No stored verification found");
       setShowVerification(true);
@@ -197,7 +213,7 @@ function LiveStream() {
 
     try {
       const verificationInfo = JSON.parse(stored);
-      
+
       // Cek apakah ada properti verified dan timestamp
       if (!verificationInfo.verified || !verificationInfo.timestamp) {
         console.log("Invalid verification data structure");
@@ -208,7 +224,7 @@ function LiveStream() {
 
       // Cek apakah verifikasi masih valid (dalam 5 jam)
       const hoursDiff = (Date.now() - verificationInfo.timestamp) / (1000 * 60 * 60);
-      
+
       if (hoursDiff > 5) {
         console.log("Verification expired (>5 hours)");
         localStorage.removeItem("stream_verification");
@@ -216,28 +232,26 @@ function LiveStream() {
         return false;
       }
 
-      // PENTING: Tidak perlu verifikasi ulang ke API saat refresh
       // Langsung izinkan akses jika session masih valid
       console.log("Session valid, granting access");
-      
+
       const ip = await fetchClientIP();
-      
+
       // Update IP jika berbeda (untuk handle IP dinamis)
       if (verificationInfo.ip !== ip) {
         console.log("IP changed, updating session");
         verificationInfo.ip = ip;
         localStorage.setItem("stream_verification", JSON.stringify(verificationInfo));
       }
-      
+
       setIsVerified(true);
       setShowVerification(false);
       setVerificationData({
         email: verificationInfo.email,
         code: verificationInfo.code,
       });
-      
-      return true;
 
+      return true;
     } catch (error) {
       console.error("Error checking verification:", error);
       localStorage.removeItem("stream_verification");
@@ -418,29 +432,25 @@ function LiveStream() {
               </div>
 
               {verificationError && (
-                <div className="error-message">
-                  {verificationError}
-                </div>
+                <div className="error-message">{verificationError}</div>
               )}
 
               {verifying ? (
-                <>
-                  <button type="button" className="verify-button" disabled>
-                    <span className="spinner"></span>
-                    Memverifikasi...
-                  </button>
-                </>
+                <button type="button" className="verify-button" disabled>
+                  <span className="spinner"></span>
+                  Memverifikasi...
+                </button>
               ) : (
-                <>
-                  <button type="submit" className="verify-button">
-                    ✓ Verifikasi Akses
-                  </button>
-                </>
+                <button type="submit" className="verify-button">
+                  ✓ Verifikasi Akses
+                </button>
               )}
             </form>
 
             <div className="verification-info">
-              <p>!<strong>Informasi:</strong></p>
+              <p>
+                !<strong>Informasi:</strong>
+              </p>
               <ul>
                 <li>Code verifikasi hanya dapat digunakan sekali</li>
                 <li>IP address akan dicatat untuk keamanan</li>
@@ -503,7 +513,7 @@ function LiveStream() {
         )}
 
         <button onClick={handleLogout} className="logout-btn">
-           Logout
+          Logout
         </button>
       </div>
 
@@ -555,4 +565,3 @@ function LiveStream() {
 }
 
 export default LiveStream;
-
