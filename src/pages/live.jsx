@@ -3,6 +3,20 @@ import { useParams, useNavigate } from "react-router-dom";
 import MuxPlayer from "@mux/mux-player-react";
 import "../styles/live-stream.css";
 
+const API_KEY = "JKTCONNECT";
+
+const apiFetch = (url, options = {}) => {
+  const isGet = !options.method || options.method === "GET";
+  return fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": API_KEY,
+      ...(options.headers || {}),
+    },
+  });
+};
+
 function LiveStream() {
   const { playbackId } = useParams();
   const navigate = useNavigate();
@@ -60,17 +74,14 @@ function LiveStream() {
       });
 
       // Step 1: Verifikasi code menggunakan API verify
-      const verifyResponse = await fetch(
+      const verifyResponse = await apiFetch(
         "https://v2.jkt48connect.com/api/codes/verify",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
           body: JSON.stringify({
             email: verificationData.email,
             code: verificationData.code,
-            apikey: "JKTCONNECT",
+            apikey: API_KEY,
           }),
         }
       );
@@ -105,8 +116,8 @@ function LiveStream() {
       // Jika usage sudah habis (is_used true DAN tidak ada sisa usage)
       if (codeData.is_used && !hasUsageRemaining) {
         // Cek apakah IP sama (untuk allow re-login dari device yang sama)
-        const listResponse = await fetch(
-          `https://v2.jkt48connect.com/api/codes/list?email=${verificationData.email}&apikey=JKTCONNECT`
+        const listResponse = await apiFetch(
+          `https://v2.jkt48connect.com/api/codes/list?email=${verificationData.email}&apikey=${API_KEY}`
         );
         const listData = await listResponse.json();
 
@@ -155,17 +166,14 @@ function LiveStream() {
       // Step 4: Code masih punya sisa usage, gunakan code
       console.log("Code is valid and has remaining usage, attempting to use...");
 
-      const useResponse = await fetch(
+      const useResponse = await apiFetch(
         "https://v2.jkt48connect.com/api/codes/use",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
           body: JSON.stringify({
             email: verificationData.email,
             code: verificationData.code,
-            apikey: "JKTCONNECT",
+            apikey: API_KEY,
           }),
         }
       );
@@ -263,8 +271,8 @@ function LiveStream() {
   // Fungsi untuk mendapatkan show terdekat dari API
   const fetchNearestShow = async () => {
     try {
-      const response = await fetch(
-        "https://v2.jkt48connect.com/api/jkt48/theater?apikey=JKTCONNECT"
+      const response = await apiFetch(
+        `https://v2.jkt48connect.com/api/jkt48/theater?apikey=${API_KEY}`
       );
       const data = await response.json();
 
@@ -297,8 +305,8 @@ function LiveStream() {
   const fetchShowMembers = async (showId) => {
     try {
       setLoadingMembers(true);
-      const response = await fetch(
-        `https://v2.jkt48connect.com/api/jkt48/theater/${showId}?apikey=JKTCONNECT`
+      const response = await apiFetch(
+        `https://v2.jkt48connect.com/api/jkt48/theater/${showId}?apikey=${API_KEY}`
       );
       const data = await response.json();
 
@@ -565,4 +573,3 @@ function LiveStream() {
 }
 
 export default LiveStream;
-
